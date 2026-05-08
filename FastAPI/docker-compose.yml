@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  # ── PostgreSQL with PostGIS + pgpointcloud ───────────────────────────────────
+  db:
+    image: postgis/postgis:15-3.4
+    container_name: metrostack_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: metrostack
+      POSTGRES_DB: metrostack
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - metrostack
+
+  # ── Redis (for Celery task queue) ────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: metrostack_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - metrostack
+
+  # ── FastAPI backend ──────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: metrostack_api
+    ports:
+      - "8000:8000"
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: metrostack
+      POSTGRES_DB: metrostack
+      REDIS_URL: redis://redis:6379/0
+      DEBUG: "true"
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - ./app:/app/app              # hot-reload in dev
+      - upload_data:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - metrostack
+
+  # ── pgAdmin (optional — web-based DB admin) ──────────────────────────────────
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: metrostack_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@metrostack.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    networks:
+      - metrostack
+
+volumes:
+  postgres_data:
+  upload_data:
+
+networks:
+  metrostack:
+    driver: bridge

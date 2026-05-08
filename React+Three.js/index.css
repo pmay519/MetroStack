@@ -1,0 +1,89 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply antialiased;
+  }
+
+  body {
+    @apply bg-industrial-950 text-industrial-100;
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-industrial-950;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-industrial-700 rounded;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-industrial-600;
+  }
+
+  /* Selection */
+  ::selection {
+    @apply bg-neon-cyan/30 text-white;
+  }
+}
+
+@layer utilities {
+  /* Technical grid background */
+  .grid-pattern {
+    background-image: linear-gradient(rgba(100, 149, 237, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(100, 149, 237, 0.03) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  /* Neon glow text */
+  .text-glow {
+    text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor;
+  }
+
+  /* Glass morphism */
+  .glass {
+    background: rgba(36, 59, 83, 0.4);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(130, 154, 177, 0.2);
+  }
+}
+
+/* Custom animations */
+@keyframes scan-line {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100vh);
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    opacity: 0.4;
+    filter: blur(8px);
+  }
+  50% {
+    opacity: 0.8;
+    filter: blur(12px);
+  }
+}
+
+/* Three.js canvas */
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
