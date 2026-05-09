@@ -1,0 +1,9 @@
+﻿Section,Purpose,Key Points
+Introduction,Welcome contributors and set a positive tone,Thank contributors, encourage participation
+Table of Contents,Navigate the document easily,Links to all major sections
+How to Contribute,Guide on forking, branching, and submitting PRs,Step-by-step instructions for Git workflow
+Code Style Guidelines,Ensure consistent and high-quality code,Language-specific standards (PEP 8, ESLint), general best practices
+Reporting Issues,Standardize bug reports and feature requests,Templates for issue reporting, search before submitting
+Pull Request Guidelines,Clarify expectations for PRs,Title format, description content, review process
+Code of Conduct,Maintain a respectful and inclusive community,Standards of behavior, enforcement, scope
+Development Setup,Provide local development prerequisites and steps,Software requirements, installation commands, configuration
