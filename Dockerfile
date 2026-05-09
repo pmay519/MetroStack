@@ -1,28 +1,31 @@
-FROM node:18-alpine AS build
+FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install dependencies
-COPY package*.json ./
-RUN npm ci
+# Install system dependencies with corrected package names
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libgeos-dev \
+    libproj-dev \
+    gdal-bin \
+    libgdal-dev \
+    libspatialindex-dev \
+    libopenexr-dev \
+    libtbb-dev \
+    libgl1 \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+# Copy requirements and install Python packages
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Copy source and build
-COPY . .
-RUN npm run build
+# Copy application code
+COPY app ./app
+COPY migrations ./migrations
 
-# Production stage with nginx
-FROM nginx:alpine
+# Expose port
+EXPOSE 8000
 
-# Copy built assets
-COPY --from=build /app/dist /usr/share/nginx/html
-
-# Copy nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --quiet --tries=1 --spider http://localhost:80/ || exit 1
-
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
+# Run the application
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
