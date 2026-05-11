@@ -2,7 +2,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies with corrected package names
+# Install system dependencies as root
 RUN apt-get update && apt-get install -y \
     build-essential \
     libgeos-dev \
@@ -12,9 +12,10 @@ RUN apt-get update && apt-get install -y \
     libspatialindex-dev \
     libopenexr-dev \
     libtbb-dev \
-    libgl1 \
+    libgl1-mesa-glx \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
+
 # Copy requirements and install Python packages
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \

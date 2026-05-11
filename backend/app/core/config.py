@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     def DATABASE_URL_SYNC(self) -> str:
         """Used by Alembic migrations (synchronous)."""
         return (
-            f"postgresql+psycopg2://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
 

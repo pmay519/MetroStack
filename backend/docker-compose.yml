@@ -1,14 +1,11 @@
-version: '3.8'
-
 services:
-  # ── PostgreSQL with PostGIS + pgpointcloud ───────────────────────────────────
-  db:
-    image: postgis/postgis:15-3.4
-    container_name: metrostack_db
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: metrostack
-      POSTGRES_DB: metrostack
+  # ── PostgreSQL with PostGIS + pgpointcloud ───────────────────────────────────db:
+  image: postgis/postgis:17-master
+  container_name: metrostack_db
+  environment:
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: metrostack
+    POSTGRES_DB: metrostack
     ports:
       - "5432:5432"
     volumes:

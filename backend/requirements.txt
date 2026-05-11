@@ -1,3 +1,6 @@
+#Environment Variables
+python-dotenv==1.0.1
+
 # Web framework
 fastapi==0.111.0
 uvicorn[standard]==0.29.0
@@ -7,7 +10,7 @@ python-multipart==0.0.9
 asyncpg==0.29.0
 sqlalchemy[asyncio]==2.0.30
 alembic==1.13.1
-psycopg2-binary==2.9.9
+
 
 # 3D geometry & metrology compute
 open3d==0.18.0
@@ -39,4 +42,20 @@ pandas==2.2.2
 # Testing
 pytest==8.2.0
 pytest-asyncio==0.23.6
-httpx==0.27.0
+
+
+# Spacial Operations
+geoalchemy2==0.15.0  # For SQLAlchemy + PostGIS integration
+shapely==2.0.3       # For geometry operations (compatible with open3d/trimesh)
+
+# Already covered by fastapi, but explicitly list if you prefer:
+fastapi[all]  # Includes CORS middleware, but you're already using uvicorn[standard]
+
+# Optional: For connection pooling (if you need it)
+psycopg2-pool==2.9.9  # Not strictly necessary, but useful for some use cases
+
+opencv-python-headless==4.9.0.80  # Headless version (no GUI dependencies)
+
+
+
+

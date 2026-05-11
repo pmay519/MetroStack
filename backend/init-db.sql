@@ -18,9 +18,9 @@ CREATE EXTENSION IF NOT EXISTS pointcloud;
 CREATE EXTENSION IF NOT EXISTS pointcloud_postgis;
 
 -- Create a point cloud format for XYZ data (basic 3D points)
--- Format 0: Simple XYZ
-INSERT INTO pointcloud_formats (pcid, srid, schema) 
-VALUES (0, 0, 
+-- Ensure we are using ID 1 and a clean schema string
+INSERT INTO pointcloud_formats (pcid, srid, schema)
+VALUES (1, 0, 
 '<?xml version="1.0" encoding="UTF-8"?>
 <pc:PointCloudSchema xmlns:pc="http://pointcloud.org/schemas/PC/1.1" 
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
@@ -45,8 +45,8 @@ VALUES (0, 0,
   <pc:metadata>
     <Metadata name="compression">none</Metadata>
   </pc:metadata>
-</pc:PointCloudSchema>'
-) ON CONFLICT (pcid) DO NOTHING;
+</pc:PointCloudSchema>')
+ON CONFLICT (pcid) DO NOTHING;
 
 -- Grant necessary permissions
 GRANT ALL PRIVILEGES ON DATABASE metrostack TO postgres;
