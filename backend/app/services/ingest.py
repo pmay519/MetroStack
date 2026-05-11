@@ -107,7 +107,7 @@ def load_cad_mesh(filepath: str | Path) -> MeshInfo:
 
     # 4. Fill small holes (<=100 edge boundary loop)
     if not meshes.is_watertight:
-        trimesh.repair.fill_holes(meshes)
+        pass  # fill_holes disabled - can hang
         if meshes.is_watertight:
             repair_notes.append("Filled open boundary holes — mesh is now watertight.")
         else:

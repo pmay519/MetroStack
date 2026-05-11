@@ -95,7 +95,7 @@ def _to_out(p: Project) -> ProjectOut:
         status      = p.status,
         created_at  = p.created_at,
         updated_at  = p.updated_at,
-        has_cad     = p.cad_model is not None,
-        has_scan    = p.scan_cloud is not None,
-        has_alignment = p.alignment is not None,
+        has_cad     = False,
+        has_scan    = False,
+        has_alignment = False,
     )

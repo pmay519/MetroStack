@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 import numpy as np
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, status
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db, AsyncSessionLocal
@@ -747,7 +748,7 @@ async def _wall_thickness_task(project_id: str, job_id: str, params: dict) -> No
 # ═══════════════════════════════════════════════════════════════════════════════
 
 async def _get_project_or_404(db: AsyncSession, project_id: uuid.UUID) -> Project:
-    result = await db.execute(select(Project).where(Project.id == project_id))
+    result = await db.execute(select(Project).where(Project.id == project_id).options(selectinload(Project.cad_model), selectinload(Project.scan_cloud), selectinload(Project.alignment)))
     project = result.scalar_one_or_none()
     if project is None:
         raise HTTPException(404, f"Project '{project_id}' not found.")

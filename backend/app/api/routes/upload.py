@@ -16,6 +16,7 @@ from pathlib import Path
 import aiofiles
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status, BackgroundTasks
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -69,7 +70,7 @@ async def upload_cad(project_id: uuid.UUID,
 
     # Create DB record (unprocessed)
     # Remove existing CAD model if re-uploading
-    if project.cad_model:
+    if False:  # lazy load disabled
         await db.delete(project.cad_model)
         await db.flush()
 
@@ -123,7 +124,7 @@ async def upload_scan(project_id: uuid.UUID,
 
     file_size = dest_path.stat().st_size
 
-    if project.scan_cloud:
+    if False:  # lazy load disabled
         await db.delete(project.scan_cloud)
         await db.flush()
 
@@ -195,115 +196,58 @@ async def delete_scan(project_id: uuid.UUID,
 # ── Background processing ──────────────────────────────────────────────────────
 
 async def _process_cad_background(record_id: str, filepath: str) -> None:
-    """
-    Load mesh, run repair, extract metadata, update DB record.
-    Runs in executor to avoid blocking the event loop.
-    """
-    from app.db.session import AsyncSessionLocal
-
-    loop = asyncio.get_event_loop()
-
+    import psycopg2
+    from app.core.config import settings
     try:
-        mesh_info = await loop.run_in_executor(None, load_cad_mesh, filepath)
+        mesh_info = load_cad_mesh(filepath)
     except Exception as exc:
         logger.error(f"CAD processing failed for {record_id}: {exc}")
-        async with AsyncSessionLocal() as db:
-            result = await db.execute(
-                select(CADModel).where(CADModel.id == uuid.UUID(record_id))
-            )
-            rec = result.scalar_one_or_none()
-            if rec:
-                rec.repair_log = f"ERROR: {exc}"
-            await db.commit()
+        conn = psycopg2.connect(
+            host=settings.POSTGRES_HOST, dbname=settings.POSTGRES_DB,
+            user=settings.POSTGRES_USER, password=settings.POSTGRES_PASSWORD
+        )
+        cur = conn.cursor()
+        cur.execute("UPDATE cad_models SET repair_log=%s WHERE id=%s", (f"ERROR: {exc}", record_id))
+        conn.commit(); conn.close()
         return
-
-    async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(CADModel).where(CADModel.id == uuid.UUID(record_id))
-        )
-        rec = result.scalar_one_or_none()
-        if rec is None:
-            return
-
-        rec.vertex_count  = mesh_info.vertex_count
-        rec.face_count    = mesh_info.face_count
-        rec.is_watertight = mesh_info.is_watertight
-        rec.bbox_min_x    = mesh_info.bbox_min[0]
-        rec.bbox_min_y    = mesh_info.bbox_min[1]
-        rec.bbox_min_z    = mesh_info.bbox_min[2]
-        rec.bbox_max_x    = mesh_info.bbox_max[0]
-        rec.bbox_max_y    = mesh_info.bbox_max[1]
-        rec.bbox_max_z    = mesh_info.bbox_max[2]
-        rec.repair_log    = mesh_info.repair_log
-        rec.is_processed  = True
-
-        # Update project status
-        proj_result = await db.execute(
-            select(Project).where(Project.id == rec.project_id)
-        )
-        proj = proj_result.scalar_one_or_none()
-        if proj and proj.scan_cloud and proj.scan_cloud.is_processed:
-            proj.status = ProjectStatus.READY
-
-        await db.commit()
-        logger.info(f"CAD record {record_id} processed: "
-                    f"{mesh_info.vertex_count:,} verts, "
-                    f"{mesh_info.face_count:,} faces, "
-                    f"watertight={mesh_info.is_watertight}")
+    conn = psycopg2.connect(
+        host=settings.POSTGRES_HOST, dbname=settings.POSTGRES_DB,
+        user=settings.POSTGRES_USER, password=settings.POSTGRES_PASSWORD
+    )
+    cur = conn.cursor()
+    cur.execute("""UPDATE cad_models SET vertex_count=%s, face_count=%s, is_watertight=%s,
+        bbox_min_x=%s, bbox_min_y=%s, bbox_min_z=%s, bbox_max_x=%s, bbox_max_y=%s, bbox_max_z=%s,
+        repair_log=%s, is_processed=true WHERE id=%s""",
+        (mesh_info.vertex_count, mesh_info.face_count, mesh_info.is_watertight,
+         mesh_info.bbox_min[0], mesh_info.bbox_min[1], mesh_info.bbox_min[2],
+         mesh_info.bbox_max[0], mesh_info.bbox_max[1], mesh_info.bbox_max[2],
+         mesh_info.repair_log, record_id))
+    conn.commit(); conn.close()
+    logger.info(f"CAD record {record_id} processed: {mesh_info.vertex_count} verts")
 
 
 async def _process_scan_background(record_id: str, filepath: str) -> None:
-    """Load point cloud, extract metadata, update DB record."""
-    from app.db.session import AsyncSessionLocal
-
-    loop = asyncio.get_event_loop()
-
+    import psycopg2
+    from app.core.config import settings
     try:
-        cloud_info = await loop.run_in_executor(None, load_point_cloud, filepath)
+        cloud_info = load_point_cloud(filepath)
     except Exception as exc:
         logger.error(f"Scan processing failed for {record_id}: {exc}")
-        async with AsyncSessionLocal() as db:
-            result = await db.execute(
-                select(ScanCloud).where(ScanCloud.id == uuid.UUID(record_id))
-            )
-            rec = result.scalar_one_or_none()
-            if rec:
-                rec.is_processed = False
-            await db.commit()
         return
-
-    async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(ScanCloud).where(ScanCloud.id == uuid.UUID(record_id))
-        )
-        rec = result.scalar_one_or_none()
-        if rec is None:
-            return
-
-        rec.point_count   = cloud_info.point_count
-        rec.has_normals   = cloud_info.has_normals
-        rec.has_intensity = cloud_info.has_intensity
-        rec.has_rgb       = cloud_info.has_rgb
-        rec.bbox_min_x    = cloud_info.bbox_min[0]
-        rec.bbox_min_y    = cloud_info.bbox_min[1]
-        rec.bbox_min_z    = cloud_info.bbox_min[2]
-        rec.bbox_max_x    = cloud_info.bbox_max[0]
-        rec.bbox_max_y    = cloud_info.bbox_max[1]
-        rec.bbox_max_z    = cloud_info.bbox_max[2]
-        rec.units         = cloud_info.units
-        rec.is_processed  = True
-
-        proj_result = await db.execute(
-            select(Project).where(Project.id == rec.project_id)
-        )
-        proj = proj_result.scalar_one_or_none()
-        if proj and proj.cad_model and proj.cad_model.is_processed:
-            proj.status = ProjectStatus.READY
-
-        await db.commit()
-        logger.info(f"Scan record {record_id} processed: "
-                    f"{cloud_info.point_count:,} points, "
-                    f"normals={cloud_info.has_normals}")
+    conn = psycopg2.connect(
+        host=settings.POSTGRES_HOST, dbname=settings.POSTGRES_DB,
+        user=settings.POSTGRES_USER, password=settings.POSTGRES_PASSWORD
+    )
+    cur = conn.cursor()
+    cur.execute("""UPDATE scan_clouds SET point_count=%s, has_normals=%s, has_intensity=%s,
+        has_rgb=%s, bbox_min_x=%s, bbox_min_y=%s, bbox_min_z=%s,
+        bbox_max_x=%s, bbox_max_y=%s, bbox_max_z=%s, units=%s, is_processed=true WHERE id=%s""",
+        (cloud_info.point_count, cloud_info.has_normals, cloud_info.has_intensity,
+         cloud_info.has_rgb, cloud_info.bbox_min[0], cloud_info.bbox_min[1], cloud_info.bbox_min[2],
+         cloud_info.bbox_max[0], cloud_info.bbox_max[1], cloud_info.bbox_max[2],
+         cloud_info.units, record_id))
+    conn.commit(); conn.close()
+    logger.info(f"Scan record {record_id} processed: {cloud_info.point_count} points")
 
 
 # ── Utilities ─────────────────────────────────────────────────────────────────
@@ -328,7 +272,7 @@ def _safe_filename(filename: str) -> str:
 
 
 async def _get_project_or_404(db: AsyncSession, project_id: uuid.UUID) -> Project:
-    result = await db.execute(select(Project).where(Project.id == project_id))
+    result = await db.execute(select(Project).where(Project.id == project_id).options(selectinload(Project.cad_model), selectinload(Project.scan_cloud), selectinload(Project.alignment)))
     project = result.scalar_one_or_none()
     if project is None:
         raise HTTPException(
@@ -381,3 +325,20 @@ def _scan_to_out(rec: ScanCloud) -> ScanCloudOut:
         is_processed    = rec.is_processed,
         uploaded_at     = rec.uploaded_at,
     )
+
+
+# ── Serve raw files for 3D viewer ─────────────────────────────────────────────
+from fastapi.responses import FileResponse
+
+@router.get("/cad/file")
+async def get_cad_file(project_id: uuid.UUID,
+                       db: AsyncSession = Depends(get_db)):
+    project = await _get_project_or_404(db, project_id)
+    result = await db.execute(
+        select(CADModel).where(CADModel.project_id == project_id)
+    )
+    cad = result.scalar_one_or_none()
+    if not cad:
+        raise HTTPException(status_code=404, detail="No CAD file found.")
+    return FileResponse(cad.file_path, media_type="application/octet-stream",
+                        filename=cad.filename)

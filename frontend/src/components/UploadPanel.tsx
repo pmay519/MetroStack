@@ -78,8 +78,7 @@ function CADUploadZone({ projectId }: { projectId: string }) {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: CAD_FORMATS.reduce((acc, ext) => ({ ...acc, [ext]: [] }), {}),
-    maxFiles: 1,
+accept: {'application/octet-stream': ['.stl', '.obj', '.ply', '.step', '.stp', '.iges', '.igs']},    maxFiles: 1,
     disabled: uploadMutation.isPending || !!cadInfo,
   })
 
@@ -169,8 +168,7 @@ function ScanUploadZone({ projectId }: { projectId: string }) {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: SCAN_FORMATS.reduce((acc, ext) => ({ ...acc, [ext]: [] }), {}),
-    maxFiles: 1,
+accept: {'application/octet-stream': ['.ply', '.pcd', '.xyz', '.e57', '.las', '.laz', '.csv']},    maxFiles: 1,
     disabled: uploadMutation.isPending || !!scanInfo,
   })
 

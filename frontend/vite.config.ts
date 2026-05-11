@@ -10,7 +10,8 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000,
+    port: 3001,          // ← lock it here
+    strictPort: true,    // ← don't let it bump again
     proxy: {
       '/api': {
         target: 'http://localhost:8000',

@@ -1,7 +1,8 @@
-import { useEffect, useRef, useMemo } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { useMemo } from 'react'
+import { Canvas, useLoader } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera, Grid, Environment } from '@react-three/drei'
 import * as THREE from 'three'
+import { STLLoader } from 'three/examples/jsm/loaders/STLLoader'
 import { useQuery } from '@tanstack/react-query'
 import { analysisAPI, uploadAPI } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
@@ -82,7 +83,7 @@ function SceneContent({ projectId }: { projectId: string }) {
   const { data: scanInfo } = useQuery({
     queryKey: ['scan-info', projectId],
     queryFn: () => uploadAPI.getScanInfo(projectId),
-    enabled: showScan && !showDeviation, // raw scan OR deviation, not both
+    enabled: showScan && !showDeviation,
   })
 
   // Load deviation point cloud
@@ -103,20 +104,7 @@ function SceneContent({ projectId }: { projectId: string }) {
     <group>
       {/* CAD reference mesh */}
       {showCAD && cadInfo && (
-        <CADMesh
-          bbox={{
-            min: [
-              cadInfo.bbox_min_x ?? 0,
-              cadInfo.bbox_min_y ?? 0,
-              cadInfo.bbox_min_z ?? 0,
-            ],
-            max: [
-              cadInfo.bbox_max_x ?? 100,
-              cadInfo.bbox_max_y ?? 100,
-              cadInfo.bbox_max_z ?? 100,
-            ],
-          }}
-        />
+        <CADMesh projectId={projectId} />
       )}
 
       {/* Raw scan point cloud (monochrome) */}
@@ -165,41 +153,18 @@ function SceneContent({ projectId }: { projectId: string }) {
   )
 }
 
-// ── CAD Mesh (wireframe placeholder) ─────────────────────────────────────────
+// ── CAD Mesh (STL loader) ─────────────────────────────────────────────────────
 
-interface BBox {
-  min: [number, number, number]
-  max: [number, number, number]
-}
-
-function CADMesh({ bbox }: { bbox: BBox }) {
-  // Compute center and size
-  const center = useMemo(
-    () => [
-      (bbox.min[0] + bbox.max[0]) / 2,
-      (bbox.min[1] + bbox.max[1]) / 2,
-      (bbox.min[2] + bbox.max[2]) / 2,
-    ],
-    [bbox]
-  )
-
-  const size = useMemo(
-    () => [
-      bbox.max[0] - bbox.min[0],
-      bbox.max[1] - bbox.min[1],
-      bbox.max[2] - bbox.min[2],
-    ],
-    [bbox]
-  )
+function CADMesh({ projectId }: { projectId: string }) {
+  const geometry = useLoader(STLLoader, `/api/projects/${projectId}/cad/file`)
 
   return (
-    <mesh position={center as [number, number, number]}>
-      <boxGeometry args={size as [number, number, number]} />
+    <mesh>
+      <primitive object={geometry} attach="geometry" />
       <meshStandardMaterial
         color="#486581"
-        wireframe
         transparent
-        opacity={0.3}
+        opacity={0.8}
         emissive="#00d9ff"
         emissiveIntensity={0.1}
       />
@@ -207,10 +172,14 @@ function CADMesh({ bbox }: { bbox: BBox }) {
   )
 }
 
-// ── Scan Point Cloud (monochrome) ────────────────────────────────────────────
+// ── Scan Point Cloud (monochrome) ─────────────────────────────────────────────
+
+interface BBox {
+  min: [number, number, number]
+  max: [number, number, number]
+}
 
 function ScanPointCloud({ count, bbox }: { count: number; bbox: BBox }) {
-  // Mock point cloud — replace with actual PLY/PCD loader
   const points = useMemo(() => {
     const positions = new Float32Array(count * 3)
     for (let i = 0; i < count; i++) {
@@ -236,7 +205,7 @@ function ScanPointCloud({ count, bbox }: { count: number; bbox: BBox }) {
   )
 }
 
-// ── Deviation Point Cloud (heatmap) ───────────────────────────────────────────
+// ── Deviation Point Cloud (heatmap) ──────────────────────────────────────────
 
 interface DeviationPointCloudProps {
   x: number[]

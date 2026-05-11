@@ -49,8 +49,8 @@ class ProjectOut(ORMBase):
     part_number: str | None
     revision: str | None
     status: ProjectStatus
-    created_at: datetime
-    updated_at: datetime
+    created_at: datetime | None
+    updated_at: datetime | None
 
     # Summarised child info (avoids full nested models on list endpoints)
     has_cad: bool   = False
@@ -131,7 +131,7 @@ class AlignmentOut(ORMBase):
     inlier_count: int | None
     iteration_count: int | None
     datum_constraints: str | None
-    created_at: datetime
+    created_at: datetime | None
 
 
 # ── Analysis Job ──────────────────────────────────────────────────────────────
@@ -148,7 +148,7 @@ class AnalysisJobOut(ORMBase):
     parameters: str | None
     started_at: datetime | None
     finished_at: datetime | None
-    created_at: datetime
+    created_at: datetime | None
 
 
 # ── Deviation ─────────────────────────────────────────────────────────────────
@@ -225,7 +225,7 @@ class GDTFeatureOut(ORMBase):
     tertiary_datum: str | None
     tolerance_upper_mm: float | None
     tolerance_lower_mm: float | None
-    created_at: datetime
+    created_at: datetime | None
 
 
 class GDTResultOut(ORMBase):
@@ -246,7 +246,7 @@ class GDTResultOut(ORMBase):
     fit_radius: float | None
     fit_residual_rms: float | None
     point_count_used: int | None
-    created_at: datetime
+    created_at: datetime | None
 
     # Denormalised feature info for convenience
     feature_name: str | None = None
