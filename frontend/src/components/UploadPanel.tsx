@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+﻿import { useCallback, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
@@ -38,13 +38,13 @@ export default function UploadPanel() {
   )
 }
 
-// ── CAD Upload Zone ───────────────────────────────────────────────────────────
+// â”€â”€ CAD Upload Zone â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function CADUploadZone({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient()
-  const { setShowCAD } = useAppStore()
+  const { setShowCAD, setLastDeletedFile } = useAppStore()
 
-  const { data: cadInfo, isLoading: isQuerying } = useQuery({
+  const { data: cadInfo } = useQuery({
     queryKey: ['cad-info', projectId],
     queryFn: () => uploadAPI.getCADInfo(projectId),
     retry: false,
@@ -64,6 +64,9 @@ function CADUploadZone({ projectId }: { projectId: string }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cad-info', projectId] })
       queryClient.invalidateQueries({ queryKey: ['projects'] })
+      // Signal 3D scene cleanup and hide visibility
+      setLastDeletedFile({ id: projectId, type: 'CAD' })
+      setShowCAD(false)
     },
   })
 
@@ -78,7 +81,8 @@ function CADUploadZone({ projectId }: { projectId: string }) {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-accept: {'application/octet-stream': ['.stl', '.obj', '.ply', '.step', '.stp', '.iges', '.igs']},    maxFiles: 1,
+    accept: {'application/octet-stream': ['.stl', '.obj', '.ply', '.step', '.stp', '.iges', '.igs']},
+    maxFiles: 1,
     disabled: uploadMutation.isPending || !!cadInfo,
   })
 
@@ -128,11 +132,11 @@ accept: {'application/octet-stream': ['.stl', '.obj', '.ply', '.step', '.stp', '
   )
 }
 
-// ── Scan Upload Zone ──────────────────────────────────────────────────────────
+// â”€â”€ Scan Upload Zone â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ScanUploadZone({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient()
-  const { setShowScan } = useAppStore()
+  const { setShowScan, setLastDeletedFile } = useAppStore()
 
   const { data: scanInfo } = useQuery({
     queryKey: ['scan-info', projectId],
@@ -154,6 +158,11 @@ function ScanUploadZone({ projectId }: { projectId: string }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['scan-info', projectId] })
       queryClient.invalidateQueries({ queryKey: ['projects'] })
+      setLastDeletedFile({ id: projectId, type: 'SCAN' })
+      setShowScan(false)
+      // Signal 3D scene cleanup and hide visibility
+      setLastDeletedFile({ id: projectId, type: 'SCAN' })
+      setShowScan(false)
     },
   })
 
@@ -168,7 +177,8 @@ function ScanUploadZone({ projectId }: { projectId: string }) {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-accept: {'application/octet-stream': ['.ply', '.pcd', '.xyz', '.e57', '.las', '.laz', '.csv']},    maxFiles: 1,
+    accept: {'application/octet-stream': ['.ply', '.pcd', '.xyz', '.e57', '.las', '.laz', '.csv']},
+    maxFiles: 1,
     disabled: uploadMutation.isPending || !!scanInfo,
   })
 
@@ -218,7 +228,7 @@ accept: {'application/octet-stream': ['.ply', '.pcd', '.xyz', '.e57', '.las', '.
   )
 }
 
-// ── File Info Card ────────────────────────────────────────────────────────────
+// â”€â”€ File Info Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface FileInfoCardProps {
   icon: React.ReactNode

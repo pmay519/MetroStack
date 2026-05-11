@@ -1,21 +1,19 @@
-import { create } from 'zustand'
+﻿import { create } from 'zustand'
 import type { Project } from '@/types/api'
 
 interface AppState {
-  // Current project
   currentProject: Project | null
   setCurrentProject: (project: Project | null) => void
+  closeProject: () => void
 
-  // UI state
+  lastDeletedFile: { id: string; type: 'CAD' | 'SCAN' } | null
+  setLastDeletedFile: (info: { id: string; type: 'CAD' | 'SCAN' } | null) => void
+
   sidebarOpen: boolean
   setSidebarOpen: (open: boolean) => void
-
   activePanel: 'files' | 'alignment' | 'deviation' | 'gdt' | 'wall-thickness' | null
-  setActivePanel: (
-    panel: 'files' | 'alignment' | 'deviation' | 'gdt' | 'wall-thickness' | null
-  ) => void
+  setActivePanel: (panel: 'files' | 'alignment' | 'deviation' | 'gdt' | 'wall-thickness' | null) => void
 
-  // 3D Viewport state
   showCAD: boolean
   showScan: boolean
   showDeviation: boolean
@@ -25,25 +23,31 @@ interface AppState {
   setShowDeviation: (show: boolean) => void
   setShowWallThickness: (show: boolean) => void
 
-  // Deviation heatmap color scale
   deviationScaleMin: number
   deviationScaleMax: number
   setDeviationScale: (min: number, max: number) => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  // Project
   currentProject: null,
   setCurrentProject: (project) => set({ currentProject: project }),
+  closeProject: () => set({ 
+    currentProject: null, 
+    activePanel: 'files',
+    showScan: false,
+    showDeviation: false,
+    showWallThickness: false,
+    lastDeletedFile: null
+  }),
 
-  // UI
+  lastDeletedFile: null,
+  setLastDeletedFile: (info) => set({ lastDeletedFile: info }),
+
   sidebarOpen: true,
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
-
   activePanel: 'files',
   setActivePanel: (panel) => set({ activePanel: panel }),
 
-  // 3D Viewport visibility
   showCAD: true,
   showScan: false,
   showDeviation: false,
@@ -53,7 +57,6 @@ export const useAppStore = create<AppState>((set) => ({
   setShowDeviation: (show) => set({ showDeviation: show }),
   setShowWallThickness: (show) => set({ showWallThickness: show }),
 
-  // Deviation scale
   deviationScaleMin: -0.5,
   deviationScaleMax: 0.5,
   setDeviationScale: (min, max) => set({ deviationScaleMin: min, deviationScaleMax: max }),
