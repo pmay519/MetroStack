@@ -1,7 +1,7 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, FolderOpen, ChevronRight, Loader2 } from 'lucide-react'
+import { Plus, FolderOpen, ChevronRight, Loader2, X } from 'lucide-react'
 import { projectsAPI } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
 import type { Project } from '@/types/api'
@@ -9,7 +9,7 @@ import { clsx } from 'clsx'
 
 export default function ProjectSidebar() {
   const [isCreating, setIsCreating] = useState(false)
-  const { currentProject, setCurrentProject } = useAppStore()
+  const { currentProject, setCurrentProject, closeProject } = useAppStore()
 
   const { data: projectsData, isLoading } = useQuery({
     queryKey: ['projects'],
@@ -19,26 +19,33 @@ export default function ProjectSidebar() {
   return (
     <div className="w-80 h-full bg-industrial-900 border-r border-industrial-700 flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-industrial-700">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-lg text-neon-cyan tracking-wider">PROJECTS</h2>
+      <div className="border-b border-industrial-700">
+        {/* Top row: back arrow space | PROJECTS centered | plus button */}
+        <div className="flex items-center h-14 px-2">
+          {/* Spacer matching the absolute-positioned sidebar toggle button */}
+          <div className="w-[42px] flex-shrink-0" />
+          <h2 className="flex-1 text-center font-display text-lg text-neon-cyan tracking-wider">
+            PROJECTS
+          </h2>
           <button
             onClick={() => setIsCreating(true)}
-            className="p-2 rounded bg-industrial-800 hover:bg-industrial-700 text-neon-cyan 
-                     transition-all hover:shadow-neon-sm"
+            className="flex-shrink-0 p-2 rounded bg-industrial-800 hover:bg-industrial-700 text-neon-cyan
+                       transition-all hover:shadow-neon-sm"
           >
             <Plus size={18} />
           </button>
         </div>
 
-        {/* Search/Filter placeholder */}
-        <input
-          type="text"
-          placeholder="SEARCH PROJECTS..."
-          className="w-full px-3 py-2 bg-industrial-950 border border-industrial-700 
-                   rounded text-sm font-mono text-industrial-100 placeholder:text-industrial-500
-                   focus:border-neon-cyan focus:outline-none"
-        />
+        {/* Search row */}
+        <div className="px-3 pb-3">
+          <input
+            type="text"
+            placeholder="SEARCH PROJECTS..."
+            className="w-full px-3 py-2 bg-industrial-950 border border-industrial-700
+                     rounded text-sm font-mono text-industrial-100 placeholder:text-industrial-500
+                     focus:border-neon-cyan focus:outline-none"
+          />
+        </div>
       </div>
 
       {/* Project List */}
@@ -55,6 +62,7 @@ export default function ProjectSidebar() {
                 project={project}
                 isActive={currentProject?.id === project.id}
                 onClick={() => setCurrentProject(project)}
+                onClose={closeProject}
               />
             ))}
             {projectsData?.items.length === 0 && (
@@ -78,15 +86,41 @@ export default function ProjectSidebar() {
   )
 }
 
-// â”€â”€ Project Item â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Project Item ──────────────────────────────────────────────────────────────
 
 interface ProjectItemProps {
   project: Project
   isActive: boolean
   onClick: () => void
+  onClose: () => void
 }
 
-function ProjectItem({ project, isActive, onClick }: ProjectItemProps) {
+function ProjectItem({ project, isActive, onClick, onClose }: ProjectItemProps) {
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const queryClient = useQueryClient()
+
+  const deleteMutation = useMutation({
+    mutationFn: () => projectsAPI.delete(project.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      onClose()
+    },
+    onError: () => {
+      setConfirmDelete(false)
+      alert(`Failed to delete "${project.name}". Try again.`)
+    },
+  })
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!confirmDelete) {
+      setConfirmDelete(true)
+      setTimeout(() => setConfirmDelete(false), 3000)
+    } else {
+      deleteMutation.mutate()
+    }
+  }
+
   const statusColors = {
     pending: 'text-industrial-500',
     ready: 'text-neon-blue',
@@ -151,14 +185,31 @@ function ProjectItem({ project, isActive, onClick }: ProjectItemProps) {
         </div>
 
         {isActive && (
-          <ChevronRight className="text-neon-cyan flex-shrink-0" size={16} />
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleDeleteClick}
+              disabled={deleteMutation.isPending}
+              className={clsx(
+                'p-1 rounded transition-colors text-xs font-mono',
+                confirmDelete
+                  ? 'bg-neon-red/20 text-neon-red border border-neon-red/50 px-2'
+                  : 'hover:bg-industrial-700 text-industrial-400 hover:text-neon-red'
+              )}
+              title={confirmDelete ? 'Click again to confirm delete' : 'Delete project'}
+            >
+              {deleteMutation.isPending
+                ? <Loader2 size={14} className="animate-spin" />
+                : confirmDelete ? 'DEL?' : <X size={16} />}
+            </button>
+            <ChevronRight className="text-neon-cyan flex-shrink-0" size={16} />
+          </div>
         )}
       </div>
     </motion.button>
   )
 }
 
-// â”€â”€ Create Project Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Create Project Modal ──────────────────────────────────────────────────────
 
 function CreateProjectModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('')
