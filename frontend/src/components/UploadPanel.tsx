@@ -1,4 +1,4 @@
-﻿import { useCallback, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
@@ -38,7 +38,7 @@ export default function UploadPanel() {
   )
 }
 
-// â”€â”€ CAD Upload Zone â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── CAD Upload Zone ─────────────────────────────────────────────────────────
 
 function CADUploadZone({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient()
@@ -47,6 +47,10 @@ function CADUploadZone({ projectId }: { projectId: string }) {
   const { data: cadInfo } = useQuery({
     queryKey: ['cad-info', projectId],
     queryFn: () => uploadAPI.getCADInfo(projectId),
+    // FIX: Poll every 3 seconds ONLY if the file isn't processed yet
+    refetchInterval: (query) => {
+      return query.state.data?.is_processed ? false : 3000
+    },
     retry: false,
   })
 
@@ -64,7 +68,6 @@ function CADUploadZone({ projectId }: { projectId: string }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cad-info', projectId] })
       queryClient.invalidateQueries({ queryKey: ['projects'] })
-      // Signal 3D scene cleanup and hide visibility
       setLastDeletedFile({ id: projectId, type: 'CAD' })
       setShowCAD(false)
     },
@@ -132,7 +135,7 @@ function CADUploadZone({ projectId }: { projectId: string }) {
   )
 }
 
-// â”€â”€ Scan Upload Zone â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Scan Upload Zone ────────────────────────────────────────────────────────
 
 function ScanUploadZone({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient()
@@ -141,6 +144,10 @@ function ScanUploadZone({ projectId }: { projectId: string }) {
   const { data: scanInfo } = useQuery({
     queryKey: ['scan-info', projectId],
     queryFn: () => uploadAPI.getScanInfo(projectId),
+    // FIX: Poll every 3 seconds ONLY if the file isn't processed yet
+    refetchInterval: (query) => {
+      return query.state.data?.is_processed ? false : 3000
+    },
     retry: false,
   })
 
@@ -158,9 +165,6 @@ function ScanUploadZone({ projectId }: { projectId: string }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['scan-info', projectId] })
       queryClient.invalidateQueries({ queryKey: ['projects'] })
-      setLastDeletedFile({ id: projectId, type: 'SCAN' })
-      setShowScan(false)
-      // Signal 3D scene cleanup and hide visibility
       setLastDeletedFile({ id: projectId, type: 'SCAN' })
       setShowScan(false)
     },
@@ -228,7 +232,7 @@ function ScanUploadZone({ projectId }: { projectId: string }) {
   )
 }
 
-// â”€â”€ File Info Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── File Info Card ──────────────────────────────────────────────────────────
 
 interface FileInfoCardProps {
   icon: React.ReactNode
@@ -314,7 +318,10 @@ function FileInfoCard({ icon, title, file, onDelete, isDeleting }: FileInfoCardP
         ) : (
           <>
             <Loader2 className="text-neon-amber animate-spin" size={14} />
-            <span className="text-xs font-mono text-neon-amber">PROCESSING...</span>
+            <span className="text-xs font-mono text-neon-amber">
+              {/* Dynamic label if metadata starts arriving before final process flag */}
+              {file.vertex_count || file.point_count ? 'FINALIZING...' : 'PROCESSING...'}
+            </span>
           </>
         )}
       </div>

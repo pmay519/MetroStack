@@ -59,3 +59,4 @@ opencv-python-headless==4.9.0.80  # Headless version (no GUI dependencies)
 
 
 
+psycopg2-binary
