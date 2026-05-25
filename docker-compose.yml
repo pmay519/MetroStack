@@ -56,7 +56,14 @@ services:
       REDIS_URL: redis://redis:6379/0
       DEBUG: "true"
       UPLOAD_DIR: /app/uploads
-      CORS_ORIGINS: '["http://localhost:3000","http://localhost:5173"]'
+      # UPDATED: Wildcard added to allow external local network requests
+      CORS_ORIGINS: '["http://localhost:3001","http://localhost:5173","http://localhost:5500","http://127.0.0.1:5500","*"]'
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      CELERY_TASK_TRACK_STARTED: "true"
+      CELERY_TASK_TIME_LIMIT: 120
+      CELERY_TASK_SOFT_TIME_LIMIT: 100
+      CELERY_TASK_SEND_SENT_EVENT: "true"
       WATCHFILES_FORCE_POLLING: "true"
     volumes:
       - ./backend/app:/app/app
@@ -66,7 +73,18 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')\" || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    develop:
+      watch:
+        - path: ./backend/app
+          target: /app/app
+          action: sync
     networks:
       - metrostack
 
@@ -79,7 +97,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      VITE_API_URL: http://localhost:8000
+      # UPDATED: Replace the placeholder below with your actual Windows machine IP address
+      VITE_API_URL:  http://localhost:3001/
       CHOKIDAR_USEPOLLING: "true"
     volumes:
       - ./frontend/src:/app/src

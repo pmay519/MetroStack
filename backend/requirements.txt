@@ -52,7 +52,7 @@ shapely==2.0.3       # For geometry operations (compatible with open3d/trimesh)
 fastapi[all]  # Includes CORS middleware, but you're already using uvicorn[standard]
 
 # Optional: For connection pooling (if you need it)
-psycopg2-pool==2.9.9  # Not strictly necessary, but useful for some use cases
+psycopg2-pool==1.2 # Not strictly necessary, but useful for some use cases
 
 opencv-python-headless==4.9.0.80  # Headless version (no GUI dependencies)
 
